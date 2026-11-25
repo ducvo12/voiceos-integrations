@@ -303,6 +303,12 @@ describe("real server routing through the real Composio SDK", () => {
     expect(operations()[0].body?.arguments).toEqual({ task_id: "task_1", ...expected });
   });
 
+  test("converts a readable create_task due date for Todoist", async () => {
+    const result = await invoke("create_task", { content: "Buy milk", due_date: "Nov 17, 2026" });
+    expect(result.isError).toBe(false);
+    expect(operations()[0].body?.arguments).toEqual({ content: "Buy milk", due_date: "2026-11-17" });
+  });
+
   test("saves edited task controls without resending the original name", async () => {
     const result = await invoke("update_task", {
       task_id: "task_1", target_name: "Buy milk", content: "Buy milk",
@@ -393,6 +399,8 @@ describe("validation before executing a Todoist operation", () => {
     ["create_task", { content: "Buy milk", duration_unit: "minute" }],
     ["create_task", { content: "Buy milk", duration: 0, duration_unit: "minute" }],
     ["create_task", { content: "Buy milk", order: 0 }],
+    ["create_task", { content: "Buy milk", due_date: "Feb 29, 2026" }],
+    ["create_task", { content: "Buy milk", due_date: "11/17" }],
     ["update_task", { task_id: "task_1", target_name: "Buy milk", due_date: "Feb 29, 2026" }],
     ["update_task", { task_id: "task_1", target_name: "Buy milk", due_date: "2026-04-31" }],
     ["update_task", { task_id: "task_1", target_name: "Buy milk", due_date: "Nov 13, 2026", due_string: "tomorrow" }],

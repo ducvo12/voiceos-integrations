@@ -20,7 +20,7 @@ const catalog: any = {
       "name": "create_task",
       "title": "Create task",
       "slug": "TODOIST_CREATE_TASK",
-      "description": "Create a Todoist task. Use when asked to add a task, reminder, or recurring task. Put scheduling in due_string or exactly one precise due field. Resolve project and section IDs using lookups; never guess IDs.",
+      "description": "Create a Todoist task. Use when asked to add a task, reminder, or recurring task. Put scheduling in due_string or exactly one precise due field. For a specific due date without a time, use due_date in the format Nov 13, 2026. Resolve project and section IDs using lookups; never guess IDs.",
       "readOnly": false,
       "inputSchema": {
         "type": "object",
@@ -65,11 +65,10 @@ const catalog: any = {
           "due_date": {
             "type": "string",
             "title": "Due Date",
-            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
             "examples": [
-              "2023-12-25"
+              "Nov 13, 2026"
             ],
-            "description": "Specific date in YYYY-MM-DD format relative to user's timezone. Use this for exact dates without time. For natural language dates, use due_string instead. Only one due_* field can be used at a time (except due_lang). Cannot express recurrence; one-off tasks only. Use due_string (e.g., 'every Friday') for recurring schedules."
+            "description": "Date without a time, relative to user's timezone. Use the English short month, day, and four-digit year (e.g. Nov 13, 2026) for a readable confirmation. YYYY-MM-DD is also accepted. For natural language dates, use due_string instead. Only one due_* field can be used at a time (except due_lang). Cannot express recurrence; one-off tasks only. Use due_string (e.g., 'every Friday') for recurring schedules."
           },
           "due_lang": {
             "type": "string",
@@ -1321,7 +1320,7 @@ function normalizeConfirmationEdits(name: string, args: Record<string, any>) {
   }
 }
 
-function normalizeUpdateDueDate(value: string): string {
+function normalizeDueDate(value: string): string {
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const readable = /^([A-Z][a-z]{2}) (\d{1,2}), (\d{4})$/.exec(value);
   let iso = value;
@@ -1438,8 +1437,8 @@ for (const tool of catalog.tools) {
       normalizeConfirmationEdits(tool.name, args);
       if (tool.name === "update_task" && args.content === target_name) delete args.content;
       validateArguments(tool.name, args);
-      if (tool.name === "update_task" && args.due_date !== undefined) {
-        args.due_date = normalizeUpdateDueDate(args.due_date);
+      if ((tool.name === "create_task" || tool.name === "update_task") && args.due_date !== undefined) {
+        args.due_date = normalizeDueDate(args.due_date);
       }
       const state = await load();
       const account = await requireAccount(state);

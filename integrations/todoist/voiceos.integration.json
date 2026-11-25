@@ -140,7 +140,7 @@
     {
       "name": "create_task",
       "title": "Create task",
-      "description": "Create a Todoist task. Use when asked to add a task, reminder, or recurring task. Put scheduling in due_string or exactly one precise due field. Resolve project and section IDs using lookups; never guess IDs.",
+      "description": "Create a Todoist task. Use when asked to add a task, reminder, or recurring task. Put scheduling in due_string or exactly one precise due field. For a specific due date without a time, use due_date in the format Nov 13, 2026. Resolve project and section IDs using lookups; never guess IDs.",
       "inputSchema": {
         "type": "object",
         "title": "CreateTaskRequest",
@@ -184,11 +184,10 @@
           "due_date": {
             "type": "string",
             "title": "Due Date",
-            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
             "examples": [
-              "2023-12-25"
+              "Nov 13, 2026"
             ],
-            "description": "Specific date in YYYY-MM-DD format relative to user's timezone. Use this for exact dates without time. For natural language dates, use due_string instead. Only one due_* field can be used at a time (except due_lang). Cannot express recurrence; one-off tasks only. Use due_string (e.g., 'every Friday') for recurring schedules."
+            "description": "Date without a time, relative to user's timezone. Use the English short month, day, and four-digit year (e.g. Nov 13, 2026) for a readable confirmation. YYYY-MM-DD is also accepted. For natural language dates, use due_string instead. Only one due_* field can be used at a time (except due_lang). Cannot express recurrence; one-off tasks only. Use due_string (e.g., 'every Friday') for recurring schedules."
           },
           "due_lang": {
             "type": "string",
