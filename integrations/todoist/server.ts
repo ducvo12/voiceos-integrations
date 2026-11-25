@@ -11,7 +11,7 @@ import { setTimeout as delay } from "node:timers/promises";
 
 // Composio owns OAuth, token storage/refresh, and Todoist requests.
 // This adapter only saves this installation's identity and connection reference.
-const server = new McpServer({ name: "composio-todoist", version: "1.0.16" });
+const server = new McpServer({ name: "composio-todoist", version: "1.0.17" });
 // BEGIN TOOL CATALOG
 const catalog: any = {
   "version": "20260731_00",
@@ -20,7 +20,7 @@ const catalog: any = {
       "name": "create_task",
       "title": "Create task",
       "slug": "TODOIST_CREATE_TASK",
-      "description": "Create a Todoist task. Use when asked to add a task, reminder, or recurring task. Put scheduling in due_string or exactly one precise due field. For a specific due date without a time, use due_date in the format Nov 13, 2026. Resolve project and section IDs using lookups; never guess IDs.",
+      "description": "Create a Todoist task. Use when asked to add a task, reminder, or recurring task. Put scheduling in due_string or exactly one precise due field. For a specific due date without a time, use due_date in the format Nov 13, 2026. Resolve project, section, and parent task IDs using lookups and pass each one's name (project_name, section_name, parent_name) for the confirmation; never guess IDs.",
       "readOnly": false,
       "inputSchema": {
         "type": "object",
@@ -127,6 +127,24 @@ const catalog: any = {
               "Jan 21, 2026"
             ],
             "description": "Human-defined due date in arbitrary format. Accepts natural language expressions like 'tomorrow', 'next Monday at 3pm', 'in 2 hours', 'every Friday'. Also accepts formatted dates like 'Jan 21, 2026' or ISO dates like '2026-01-21'. Value is interpreted using local time. IMPORTANT: If the due string is in a language other than English (e.g., 'esta semana' in Portuguese, 'ma\u00f1ana' in Spanish, 'demain' in French), you MUST also set the due_lang field with the appropriate 2-letter language code (e.g., 'pt' for Portuguese, 'es' for Spanish, 'fr' for French, 'de' for German), otherwise the API will reject it with 'Invalid date format'. Do NOT include duration phrases like 'for X minutes' or 'for X days' in this field - use the separate duration and duration_unit fields instead. If duration is included, it will be automatically extracted and applied to the duration fields. Only one due_* field can be used at a time (except due_lang)."
+          },
+          "project_name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Project name",
+            "description": "Project name from the lookup, for confirmation display only. Required whenever project_id is set. Never invent a name or substitute it for project_id."
+          },
+          "section_name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Section name",
+            "description": "Section name from the lookup, for confirmation display only. Required whenever section_id is set. Never invent a name or substitute it for section_id."
+          },
+          "parent_name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Parent task name",
+            "description": "Parent task name from the lookup, for confirmation display only. Required whenever parent_id is set. Never invent a name or substitute it for parent_id."
           },
           "project_id": {
             "type": "string",
@@ -435,7 +453,7 @@ const catalog: any = {
       "name": "create_project",
       "title": "Create project",
       "slug": "TODOIST_CREATE_PROJECT2",
-      "description": "Create a Todoist project or subproject. Resolve the parent ID with list_projects and clarify duplicate names. For a follow-up before approval, revise the pending project, preserve its other fields, and show the confirmation again.",
+      "description": "Create a Todoist project or subproject. Resolve the parent ID with list_projects, pass its name as parent_name, and clarify duplicate names. For a follow-up before approval, revise the pending project, preserve its other fields, and show the confirmation again.",
       "readOnly": false,
       "inputSchema": {
         "type": "object",
@@ -463,6 +481,12 @@ const catalog: any = {
               "taupe"
             ],
             "description": "Todoist color name. Leave blank or omit to use the default, charcoal."
+          },
+          "parent_name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Parent project name",
+            "description": "Parent project name from list_projects, for confirmation display only. Required whenever parent_id is set. Never invent a name or substitute it for parent_id."
           },
           "parent_id": {
             "anyOf": [
@@ -558,14 +582,15 @@ const catalog: any = {
       "name": "create_section",
       "title": "Create section",
       "slug": "TODOIST_CREATE_SECTION_V1",
-      "description": "Create a section inside an existing Todoist project. Use when asked to add a section. Resolve the project ID with list_projects before proposing the action.",
+      "description": "Create a section inside an existing Todoist project. Use when asked to add a section. Resolve the project ID with list_projects and pass its name as project_name before proposing the action.",
       "readOnly": false,
       "inputSchema": {
         "type": "object",
         "title": "CreateSectionV1Request",
         "required": [
           "name",
-          "project_id"
+          "project_id",
+          "project_name"
         ],
         "properties": {
           "name": {
@@ -587,6 +612,12 @@ const catalog: any = {
               5
             ],
             "description": "Position of the new section in the project. Lower values appear first. If not specified, the section will be added to the end."
+          },
+          "project_name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Project name",
+            "description": "Project name from list_projects, for confirmation display only. Never invent a name or substitute it for project_id."
           },
           "project_id": {
             "type": "string",
@@ -1432,8 +1463,14 @@ for (const tool of catalog.tools) {
     title: tool.title, description: tool.description, inputSchema: z.object(inputShape(tool.inputSchema)).strict(),
     annotations: { readOnlyHint: tool.readOnly, destructiveHint: ["delete_project", "delete_section", "delete_label"].includes(tool.name), openWorldHint: true },
   }, async (input: Record<string, any>, extra) => withFeedback(tool.title, extra, async () => {
-      const { target_name, current_labels, ...args } = input;
+      const { target_name, current_labels, project_name, section_name, parent_name, ...args } = input;
       if (target_name !== undefined && !target_name.trim()) throw new Error("target_name cannot be blank.");
+      // Display-only names label their ID's card row, so an ID without its name would show a blank row.
+      for (const [id, field, value] of [["project_id", "project_name", project_name], ["section_id", "section_name", section_name], ["parent_id", "parent_name", parent_name]]) {
+        if (tool.inputSchema.properties?.[field] && (args[id] !== undefined || value !== undefined) && !value?.trim()) {
+          throw new Error(`${field} is required with ${id} and cannot be blank.`);
+        }
+      }
       normalizeConfirmationEdits(tool.name, args);
       if (tool.name === "update_task" && args.content === target_name) delete args.content;
       validateArguments(tool.name, args);

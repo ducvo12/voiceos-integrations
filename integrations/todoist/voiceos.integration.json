@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "com.voiceos.generated.composio-todoist",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "name": "Todoist",
   "summary": "Manage Todoist tasks, projects, sections, and labels through Composio OAuth.",
   "description": "Todoist account controls, task/project/section/label actions, and productivity statistics. Actions show consistent confirmation cards; lookups run without confirmation.",
@@ -140,7 +140,7 @@
     {
       "name": "create_task",
       "title": "Create task",
-      "description": "Create a Todoist task. Use when asked to add a task, reminder, or recurring task. Put scheduling in due_string or exactly one precise due field. For a specific due date without a time, use due_date in the format Nov 13, 2026. Resolve project and section IDs using lookups; never guess IDs.",
+      "description": "Create a Todoist task. Use when asked to add a task, reminder, or recurring task. Put scheduling in due_string or exactly one precise due field. For a specific due date without a time, use due_date in the format Nov 13, 2026. Resolve project, section, and parent task IDs using lookups and pass each one's name (project_name, section_name, parent_name) for the confirmation; never guess IDs.",
       "inputSchema": {
         "type": "object",
         "title": "CreateTaskRequest",
@@ -247,6 +247,24 @@
             ],
             "description": "Human-defined due date in arbitrary format. Accepts natural language expressions like 'tomorrow', 'next Monday at 3pm', 'in 2 hours', 'every Friday'. Also accepts formatted dates like 'Jan 21, 2026' or ISO dates like '2026-01-21'. Value is interpreted using local time. IMPORTANT: If the due string is in a language other than English (e.g., 'esta semana' in Portuguese, 'ma\u00f1ana' in Spanish, 'demain' in French), you MUST also set the due_lang field with the appropriate 2-letter language code (e.g., 'pt' for Portuguese, 'es' for Spanish, 'fr' for French, 'de' for German), otherwise the API will reject it with 'Invalid date format'. Do NOT include duration phrases like 'for X minutes' or 'for X days' in this field - use the separate duration and duration_unit fields instead. If duration is included, it will be automatically extracted and applied to the duration fields. Only one due_* field can be used at a time (except due_lang)."
           },
+          "project_name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Project name",
+            "description": "Project name from the lookup, for confirmation display only. Required whenever project_id is set. Never invent a name or substitute it for project_id."
+          },
+          "section_name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Section name",
+            "description": "Section name from the lookup, for confirmation display only. Required whenever section_id is set. Never invent a name or substitute it for section_id."
+          },
+          "parent_name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Parent task name",
+            "description": "Parent task name from the lookup, for confirmation display only. Required whenever parent_id is set. Never invent a name or substitute it for parent_id."
+          },
           "project_id": {
             "type": "string",
             "title": "Project Id",
@@ -326,9 +344,9 @@
                     { "type": "keyValue", "visibleIf": "{{due_lang}}", "rows": [{ "label": "Scheduling language", "value": "{{due_lang}}" }] },
                     { "type": "keyValue", "visibleIf": "{{priority}}", "rows": [{ "label": "Priority", "value": "{{priority}}" }] },
                     { "type": "keyValue", "visibleIf": "{{labels}}", "rows": [{ "label": "Labels", "value": "{{labels}}" }] },
-                    { "type": "keyValue", "visibleIf": "{{project_id}}", "rows": [{ "label": "Project ID", "value": "{{project_id}}" }] },
-                    { "type": "keyValue", "visibleIf": "{{section_id}}", "rows": [{ "label": "Section ID", "value": "{{section_id}}" }] },
-                    { "type": "keyValue", "visibleIf": "{{parent_id}}", "rows": [{ "label": "Parent ID", "value": "{{parent_id}}" }] },
+                    { "type": "keyValue", "visibleIf": "{{project_id}}", "rows": [{ "label": "Project", "value": "{{project_name}}" }] },
+                    { "type": "keyValue", "visibleIf": "{{section_id}}", "rows": [{ "label": "Section", "value": "{{section_name}}" }] },
+                    { "type": "keyValue", "visibleIf": "{{parent_id}}", "rows": [{ "label": "Parent task", "value": "{{parent_name}}" }] },
                     { "type": "keyValue", "visibleIf": "{{assignee_id}}", "rows": [{ "label": "Assignee ID", "value": "{{assignee_id}}" }] },
                     { "type": "keyValue", "visibleIf": "{{duration}}", "rows": [{ "label": "Duration", "value": "{{duration}} {{duration_unit}}" }] },
                     { "type": "keyValue", "visibleIf": "{{order}}", "rows": [{ "label": "Order", "value": "{{order}}" }] }
@@ -669,7 +687,7 @@
     {
       "name": "create_project",
       "title": "Create project",
-      "description": "Create a Todoist project or subproject. Resolve the parent ID with list_projects and clarify duplicate names. For a follow-up before approval, revise the pending project, preserve its other fields, and show the confirmation again.",
+      "description": "Create a Todoist project or subproject. Resolve the parent ID with list_projects, pass its name as parent_name, and clarify duplicate names. For a follow-up before approval, revise the pending project, preserve its other fields, and show the confirmation again.",
       "inputSchema": {
         "type": "object",
         "title": "TodoistCreateProject2Request",
@@ -696,6 +714,12 @@
               "taupe"
             ],
             "description": "Todoist color name. Leave blank or omit to use the default, charcoal."
+          },
+          "parent_name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Parent project name",
+            "description": "Parent project name from list_projects, for confirmation display only. Required whenever parent_id is set. Never invent a name or substitute it for parent_id."
           },
           "parent_id": {
             "anyOf": [
@@ -795,7 +819,7 @@
                 {
                   "type": "stack", "direction": "vertical", "gap": "sm",
                   "children": [
-                    { "type": "keyValue", "visibleIf": "{{parent_id}}", "rows": [{ "label": "Parent ID", "value": "{{parent_id}}" }] },
+                    { "type": "keyValue", "visibleIf": "{{parent_id}}", "rows": [{ "label": "Parent project", "value": "{{parent_name}}" }] },
                     { "type": "keyValue", "visibleIf": "{{workspace_id}}", "rows": [{ "label": "Workspace ID", "value": "{{workspace_id}}" }] },
                     { "type": "keyValue", "visibleIf": "{{view_style}}", "rows": [{ "label": "View", "value": "{{view_style}}" }] }
                   ]
@@ -877,13 +901,14 @@
     {
       "name": "create_section",
       "title": "Create section",
-      "description": "Create a section inside an existing Todoist project. Use when asked to add a section. Resolve the project ID with list_projects before proposing the action.",
+      "description": "Create a section inside an existing Todoist project. Use when asked to add a section. Resolve the project ID with list_projects and pass its name as project_name before proposing the action.",
       "inputSchema": {
         "type": "object",
         "title": "CreateSectionV1Request",
         "required": [
           "name",
-          "project_id"
+          "project_id",
+          "project_name"
         ],
         "properties": {
           "name": {
@@ -905,6 +930,12 @@
               5
             ],
             "description": "Position of the new section in the project. Lower values appear first. If not specified, the section will be added to the end."
+          },
+          "project_name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Project name",
+            "description": "Project name from list_projects, for confirmation display only. Never invent a name or substitute it for project_id."
           },
           "project_id": {
             "type": "string",
@@ -932,7 +963,8 @@
                 {
                   "type": "stack", "direction": "vertical", "gap": "sm",
                   "children": [
-                    { "type": "keyValue", "rows": [{ "label": "Project ID", "value": "{{project_id}}" }, { "label": "Order (optional)", "value": "{{order}}" }] }
+                    { "type": "keyValue", "rows": [{ "label": "Project", "value": "{{project_name}}" }] },
+                    { "type": "keyValue", "visibleIf": "{{order}}", "rows": [{ "label": "Order", "value": "{{order}}" }] }
                   ]
                 }
               ]

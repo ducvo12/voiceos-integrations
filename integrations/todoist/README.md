@@ -1,4 +1,4 @@
-# Todoist integration — 1.0.16
+# Todoist integration — 1.0.17
 
 A VoiceOS integration for Todoist powered by Composio OAuth. It enables voice control to manage tasks, projects, sections, and personal labels, monitor productivity stats, and handle account authentication with interactive cards and confirmation dialogs.
 
@@ -55,13 +55,17 @@ Every action that changes data uses a confirmation card with a Cancel/Action foo
 
 | Connect Account | Create Task | Delete Confirmation |
 | :---: | :---: | :---: |
-| ![Connect Todoist card](ui_images/connect.png) | ![Create task confirmation card](ui_images/creation.png) | ![Delete project confirmation card](ui_images/deletion.png) |
+| ![Connect Todoist card](ui_images/connect.png) | ![Create task confirmation card](ui_images/create_task.png) | ![Delete project confirmation card](ui_images/deletion.png) |
 
 | Update Task | Update Label | Get Active Tasks |
 | :---: | :---: | :---: |
 | ![Update task confirmation card](ui_images/update_task.png) | ![Update label confirmation card](ui_images/update_label.png) | ![Active tasks result card](ui_images/get_tasks.png) |
 
-- **Creation**: Task, project, section, and label creation share an editable `Name` field followed by a details summary. Due dates read like `Dec 17, 2026`.
+| Create Section |
+| :---: |
+| ![Create section confirmation card](ui_images/create_section.png) |
+
+- **Creation**: Task, project, section, and label creation share an editable `Name` field followed by a details summary. Due dates read like `Dec 17, 2026`. Projects, sections, and parent tasks show by name, never by raw ID.
 - **Updates**: Both update cards show the original name and an editable `New name`, prefilled with the current name. They differ in how they show the other fields:
   - **Update task** shows a field only when the request changes it. The task has about 12 optional fields, so showing them all would make the card unreadable.
   - **Update label** always shows color and favorite, prefilled from the label's current values. A label has only three fields, so the card matches `create_label` and stays short. Prefilling also means saving never resets a value the user didn't mention.
