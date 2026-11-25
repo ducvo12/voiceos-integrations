@@ -28,7 +28,7 @@ The integration exposes **18 tools: 15 business tools and 3 account/setup helper
 
 ### Tasks
 - **Create task** (`create_task`): Creates a new task with editable name, optional project, section, priority, due date/string, and labels (requires confirmation).
-- **Update task** (`update_task`): Updates an existing task's name, priority, due date, project, or labels (requires confirmation).
+- **Update task** (`update_task`): Updates an existing task's name, description, priority, due date, duration, deadline, or labels (requires confirmation).
 - **Complete task** (`close_task`): Completes/closes a task; recurring tasks automatically advance to their next occurrence (requires confirmation).
 - **Get active tasks** (`get_active_tasks`): Read-only lookup with filters (project, section, label, priority, due date ranges), task ID resolution, and pagination.
 
@@ -51,13 +51,20 @@ The integration exposes **18 tools: 15 business tools and 3 account/setup helper
 
 ## Result and Confirmation Cards
 
-All actions use confirmation cards with a Cancel/Action footer. The screenshots show the macOS layout.
+Every action that changes data uses a confirmation card with a Cancel/Action footer. The screenshots show the macOS layout.
 
 | Connect Account | Create Task | Delete Confirmation |
 | :---: | :---: | :---: |
 | ![Connect Todoist card](ui_images/connect.png) | ![Create task confirmation card](ui_images/creation.png) | ![Delete project confirmation card](ui_images/deletion.png) |
 
-- **State modifications**: Task, project, section, and label creation share an editable `Name` field followed by a details summary. Updates display the selected item’s name and the requested changes. The label update card shows the original name and prefills the editable name, color, and favorite fields from the label and the requested changes.
+| Update Task | Update Label | Get Active Tasks |
+| :---: | :---: | :---: |
+| ![Update task confirmation card](ui_images/update_task.png) | ![Update label confirmation card](ui_images/update_label.png) | ![Active tasks result card](ui_images/get_tasks.png) |
+
+- **Creation**: Task, project, section, and label creation share an editable `Name` field followed by a details summary. Due dates read like `Dec 17, 2026`.
+- **Updates**: Both update cards show the original name and an editable `New name`, prefilled with the current name. They differ in how they show the other fields:
+  - **Update task** shows a field only when the request changes it. The task has about 12 optional fields, so showing them all would make the card unreadable.
+  - **Update label** always shows color and favorite, prefilled from the label's current values. A label has only three fields, so the card matches `create_label` and stays short. Prefilling also means saving never resets a value the user didn't mention.
 - **Destructive actions**: Deletion confirmations display the item’s name and a warning explaining the consequences (e.g. deleting a project also deletes all containing sections and tasks).
 - **Read-only lookups**: Return glance cards with structured data without prompting for confirmation.
 - **Label operations**: `list_labels` reads labels with optional `limit` and `cursor`. Modifying labels is handled cleanly by dedicated `create_label`, `update_label`, and `delete_label` tools.
