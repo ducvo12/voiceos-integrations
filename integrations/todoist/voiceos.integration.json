@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "com.voiceos.generated.composio-todoist",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "name": "Todoist",
   "summary": "Manage Todoist tasks, projects, sections, and labels through Composio OAuth.",
   "description": "Todoist account controls, task/project/section/label actions, and productivity statistics. Actions show consistent confirmation cards; lookups run without confirmation.",
@@ -42,7 +42,7 @@
     {
       "name": "COMPOSIO_API_KEY",
       "title": "Composio API key",
-      "description": "Settings -> API Keys in your Composio dashboard at app.composio.dev.",
+      "description": "Your Composio API key from platform.composio.dev -> API Keys. Use a Platform workspace, not For You.",
       "type": "password",
       "required": true
     }
@@ -348,12 +348,13 @@
     {
       "name": "update_task",
       "title": "Update task",
-      "description": "Update an existing Todoist task. Find the exact task with get_active_tasks first. Include only requested changes. For a specific due date without a time, use due_date in the format Nov 13, 2026. When changing labels, pass the current task labels separately for display if available. For a follow-up before approval, revise the pending update, preserve the selected task and other pending edits, and show the confirmation again.",
+      "description": "Update an existing Todoist task. Find the exact task with get_active_tasks first. For the editable New name field, pass the requested name or prefill it with the current task name. Include other fields only for requested changes. For a specific due date without a time, use due_date in the format Nov 13, 2026. When changing labels, pass the current task labels separately for display if available. For a follow-up before approval, revise the pending update, preserve the selected task and other pending edits, and show the confirmation again.",
       "inputSchema": {
         "type": "object",
         "title": "UpdateTaskRequest",
         "required": [
-          "task_id"
+          "task_id",
+          "target_name"
         ],
         "properties": {
           "labels": {
@@ -369,7 +370,7 @@
             "examples": [
               "Buy groceries and snacks"
             ],
-            "description": "New content for the task."
+            "description": "Name shown in the editable New name field. Use the current task name unless the user requests a rename."
           },
           "task_id": {
             "type": "string",
@@ -397,22 +398,18 @@
             "description": "Language code for parsing `due_string`, e.g., 'en'."
           },
           "duration": {
-            "type": "integer",
+            "anyOf": [{ "type": "integer", "minimum": 1 }, { "type": "string" }],
             "title": "Duration",
             "examples": [
               15,
               30,
               60
             ],
-            "description": "Positive integer for task duration amount (how long the task takes). Must be used together with duration_unit. This is separate from due date - use due_string/due_date/due_datetime for when the task is due.",
-            "exclusiveMinimum": 0,
-            "minimum": 1
+            "description": "Positive integer for task duration amount (how long the task takes). Must be used together with duration_unit. This is separate from due date - use due_string/due_date/due_datetime for when the task is due."
           },
           "priority": {
-            "type": "integer",
+            "anyOf": [{ "type": "integer", "minimum": 1, "maximum": 4 }, { "type": "string", "enum": ["1", "2", "3", "4"] }],
             "title": "Priority",
-            "maximum": 4,
-            "minimum": 1,
             "examples": [
               1,
               2,
@@ -481,6 +478,7 @@
           },
           "target_name": {
             "type": "string",
+            "minLength": 1,
             "title": "Selected target",
             "description": "Human-readable name/title from the lookup, for confirmation display only. Never invent a name or substitute it for the required ID."
           }
@@ -496,11 +494,11 @@
             {
               "type": "stack", "direction": "vertical", "gap": "md",
               "children": [
-                { "type": "text", "visibleIf": "{{target_name}}", "text": "{{target_name}}" },
+                { "type": "keyValue", "rows": [{ "label": "Original name", "value": "{{target_name}}" }] },
+                { "type": "textField", "bind": "{{content}}", "label": "New name", "required": true },
                 {
                   "type": "stack", "direction": "vertical", "gap": "sm",
                   "children": [
-                    { "type": "keyValue", "visibleIf": "{{content}}", "rows": [{ "label": "New name", "value": "{{content}}" }] },
                     { "type": "textField", "bind": "{{description}}", "visibleIf": "{{description}}", "label": "Description", "multiline": true },
                     { "type": "keyValue", "visibleIf": "{{clear_description}}", "rows": [{ "label": "Description", "value": "Will be removed" }] },
                     {
@@ -511,14 +509,34 @@
                         { "type": "text", "text": "Edit the list as shown or enter one label per line. Leave blank to keep current labels. Enter [] to remove all labels.", "color": "muted" }
                       ]
                     },
-                    { "type": "keyValue", "visibleIf": "{{due_string}}", "rows": [{ "label": "Due", "value": "{{due_string}}" }] },
-                    { "type": "keyValue", "visibleIf": "{{due_date}}", "rows": [{ "label": "Due date", "value": "{{due_date}}" }] },
-                    { "type": "keyValue", "visibleIf": "{{due_datetime}}", "rows": [{ "label": "Due time", "value": "{{due_datetime}}" }] },
-                    { "type": "keyValue", "visibleIf": "{{due_lang}}", "rows": [{ "label": "Scheduling language", "value": "{{due_lang}}" }] },
-                    { "type": "keyValue", "visibleIf": "{{priority}}", "rows": [{ "label": "Priority", "value": "{{priority}}" }] },
+                    { "type": "textField", "bind": "{{due_string}}", "visibleIf": "{{due_string}}", "label": "Due", "required": true },
+                    { "type": "textField", "bind": "{{due_date}}", "visibleIf": "{{due_date}}", "label": "Due date", "required": true },
+                    { "type": "textField", "bind": "{{due_datetime}}", "visibleIf": "{{due_datetime}}", "label": "Due time", "required": true },
+                    { "type": "textField", "bind": "{{due_lang}}", "visibleIf": "{{due_lang}}", "label": "Scheduling language", "required": true },
+                    {
+                      "type": "select", "bind": "{{priority}}", "visibleIf": "{{priority}}", "label": "Priority",
+                      "options": [
+                        { "value": "1", "label": "Normal" },
+                        { "value": "2", "label": "Medium" },
+                        { "value": "3", "label": "High" },
+                        { "value": "4", "label": "Urgent" }
+                      ]
+                    },
                     { "type": "keyValue", "visibleIf": "{{assignee_id}}", "rows": [{ "label": "Assignee ID", "value": "{{assignee_id}}" }] },
-                    { "type": "keyValue", "visibleIf": "{{duration}}", "rows": [{ "label": "Duration", "value": "{{duration}} {{duration_unit}}" }] },
-                    { "type": "keyValue", "visibleIf": "{{deadline_date}}", "rows": [{ "label": "Deadline", "value": "{{deadline_date}}" }] }
+                    {
+                      "type": "stack", "direction": "vertical", "gap": "sm", "visibleIf": "{{duration}}",
+                      "children": [
+                        { "type": "textField", "bind": "{{duration}}", "label": "Duration", "required": true },
+                        {
+                          "type": "select", "bind": "{{duration_unit}}", "label": "Duration unit",
+                          "options": [
+                            { "value": "minute", "label": "Minutes" },
+                            { "value": "day", "label": "Days" }
+                          ]
+                        }
+                      ]
+                    },
+                    { "type": "textField", "bind": "{{deadline_date}}", "visibleIf": "{{deadline_date}}", "label": "Deadline", "required": true }
                   ]
                 }
               ]
@@ -539,7 +557,8 @@
         "type": "object",
         "title": "CloseTaskV1Request",
         "required": [
-          "task_id"
+          "task_id",
+          "target_name"
         ],
         "properties": {
           "task_id": {
@@ -553,6 +572,7 @@
           },
           "target_name": {
             "type": "string",
+            "minLength": 1,
             "title": "Selected target",
             "description": "Human-readable name/title from the lookup, for confirmation display only. Never invent a name or substitute it for the required ID."
           }
@@ -569,7 +589,7 @@
               "type": "stack", "direction": "vertical", "gap": "md",
               "children": [
                 { "type": "text", "text": "Review the selected task before completing it.", "color": "muted" },
-                { "type": "keyValue", "rows": [{ "label": "Name", "value": "{{target_name}}" }, { "label": "ID", "value": "{{task_id}}" }] },
+                { "type": "keyValue", "rows": [{ "label": "Name", "value": "{{target_name}}" }] },
                 { "type": "text", "text": "Recurring tasks advance to their next occurrence.", "color": "muted" }
               ]
             }
@@ -934,7 +954,8 @@
         "type": "object",
         "title": "DeleteSection2Request",
         "required": [
-          "section_id"
+          "section_id",
+          "target_name"
         ],
         "properties": {
           "section_id": {
@@ -948,6 +969,7 @@
           },
           "target_name": {
             "type": "string",
+            "minLength": 1,
             "title": "Selected target",
             "description": "Human-readable name/title from the lookup, for confirmation display only. Never invent a name or substitute it for the required ID."
           }
@@ -964,7 +986,7 @@
               "type": "stack", "direction": "vertical", "gap": "md",
               "children": [
                 { "type": "text", "text": "Review the selected section before deleting it.", "color": "muted" },
-                { "type": "keyValue", "rows": [{ "label": "Name", "value": "{{target_name}}" }, { "label": "ID", "value": "{{section_id}}" }] },
+                { "type": "keyValue", "rows": [{ "label": "Name", "value": "{{target_name}}" }] },
                 { "type": "text", "text": "This also deletes every task in the section.", "color": "danger" }
               ]
             }
@@ -1162,17 +1184,26 @@
     {
       "name": "update_label",
       "title": "Update label",
-      "description": "Update a personal Todoist label. Use when asked to rename a label or change its color, order, or favorite status. Resolve the exact ID with list_labels first, clarify ambiguous names, and send only requested changes.",
+      "description": "Update a personal Todoist label. Look up the exact label with list_labels and clarify ambiguous names. Prefill name, color, and is_favorite from the matched label, applying any changes the user requested. Pass is_favorite as the string true or false for the dropdown. For follow-ups before approval, preserve the other values on the pending card.",
       "inputSchema": {
         "type": "object",
-        "required": ["label_id"],
+        "required": ["label_id", "target_name", "name", "color", "is_favorite"],
         "properties": {
           "label_id": { "type": "string", "description": "ID of the label to update." },
-          "target_name": { "type": "string", "description": "Existing label name from list_labels, for confirmation display only. Never substitute it for label_id." },
-          "name": { "type": "string", "minLength": 1, "maxLength": 128, "description": "New label name. Omit to leave unchanged." },
-          "color": { "anyOf": [{ "type": "string" }, { "type": "integer" }], "description": "New color name or numeric color code. Omit to leave unchanged." },
-          "order": { "type": "integer", "description": "New position in the label list. Omit to leave unchanged." },
-          "is_favorite": { "type": "boolean", "description": "New favorite status. Omit to leave unchanged." }
+          "target_name": { "type": "string", "minLength": 1, "description": "Existing label name from list_labels, for confirmation display only. Never substitute it for label_id." },
+          "name": { "type": "string", "minLength": 1, "maxLength": 128, "description": "Name to save. Use the current name unless the user requests a rename." },
+          "color": {
+            "type": "string",
+            "enum": [
+              "berry_red", "red", "orange", "yellow",
+              "olive_green", "lime_green", "green", "mint_green", "teal",
+              "sky_blue", "light_blue", "blue", "grape", "violet",
+              "lavender", "magenta", "salmon", "charcoal", "grey",
+              "taupe"
+            ],
+            "description": "Color to save. Use the current color from list_labels unless the user requests a different one."
+          },
+          "is_favorite": { "anyOf": [{ "type": "boolean" }, { "type": "string", "enum": ["true", "false"] }], "description": "Favorite status to save. Use the current status unless the user requests a change." }
         }
       },
       "confirmation": {
@@ -1184,13 +1215,38 @@
             {
               "type": "stack", "direction": "vertical", "gap": "md",
               "children": [
-                { "type": "text", "text": "Review the requested changes. Other fields stay unchanged.", "color": "muted" },
-                { "type": "keyValue", "rows": [{ "label": "Name", "value": "{{target_name}}" }, { "label": "ID", "value": "{{label_id}}" }] },
+                { "type": "keyValue", "rows": [{ "label": "Original name", "value": "{{target_name}}" }] },
+                { "type": "textField", "bind": "{{name}}", "label": "New name", "required": true },
                 {
-                  "type": "stack", "direction": "vertical", "gap": "sm",
-                  "children": [
-                    { "type": "keyValue", "visibleIf": "{{name}}", "rows": [{ "label": "New name", "value": "{{name}}" }] },
-                    { "type": "keyValue", "rows": [{ "label": "Color (if specified)", "value": "{{color}}" }, { "label": "Order (if specified)", "value": "{{order}}" }, { "label": "Favorite (if specified)", "value": "{{is_favorite}}" }] }
+                  "type": "select", "bind": "{{color}}", "label": "Color",
+                  "options": [
+                    { "value": "berry_red", "label": "Berry Red" },
+                    { "value": "red", "label": "Red" },
+                    { "value": "orange", "label": "Orange" },
+                    { "value": "yellow", "label": "Yellow" },
+                    { "value": "olive_green", "label": "Olive Green" },
+                    { "value": "lime_green", "label": "Lime Green" },
+                    { "value": "green", "label": "Green" },
+                    { "value": "mint_green", "label": "Mint Green" },
+                    { "value": "teal", "label": "Teal" },
+                    { "value": "sky_blue", "label": "Sky Blue" },
+                    { "value": "light_blue", "label": "Light Blue" },
+                    { "value": "blue", "label": "Blue" },
+                    { "value": "grape", "label": "Grape" },
+                    { "value": "violet", "label": "Violet" },
+                    { "value": "lavender", "label": "Lavender" },
+                    { "value": "magenta", "label": "Magenta" },
+                    { "value": "salmon", "label": "Salmon" },
+                    { "value": "charcoal", "label": "Charcoal" },
+                    { "value": "grey", "label": "Grey" },
+                    { "value": "taupe", "label": "Taupe" }
+                  ]
+                },
+                {
+                  "type": "select", "bind": "{{is_favorite}}", "label": "Favorite",
+                  "options": [
+                    { "value": "true", "label": "Yes" },
+                    { "value": "false", "label": "No" }
                   ]
                 }
               ]
@@ -1211,7 +1267,8 @@
         "type": "object",
         "title": "DeleteLabelV1Request",
         "required": [
-          "label_id"
+          "label_id",
+          "target_name"
         ],
         "properties": {
           "label_id": {
@@ -1224,6 +1281,7 @@
           },
           "target_name": {
             "type": "string",
+            "minLength": 1,
             "title": "Selected label",
             "description": "Human-readable label name from list_labels, for confirmation display only. Never substitute it for label_id."
           }
@@ -1240,7 +1298,7 @@
               "type": "stack", "direction": "vertical", "gap": "md",
               "children": [
                 { "type": "text", "text": "Review the selected label before deleting it.", "color": "muted" },
-                { "type": "keyValue", "rows": [{ "label": "Name", "value": "{{target_name}}" }, { "label": "ID", "value": "{{label_id}}" }] },
+                { "type": "keyValue", "rows": [{ "label": "Name", "value": "{{target_name}}" }] },
                 { "type": "text", "text": "This removes the label from every task that uses it. Tasks themselves remain.", "color": "danger" }
               ]
             }

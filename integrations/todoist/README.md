@@ -1,4 +1,4 @@
-# Todoist integration — 1.0.15
+# Todoist integration — 1.0.16
 
 A VoiceOS integration for Todoist powered by Composio OAuth. It enables voice control to manage tasks, projects, sections, and personal labels, monitor productivity stats, and handle account authentication with interactive cards and confirmation dialogs.
 
@@ -43,7 +43,7 @@ The integration exposes **18 tools: 15 business tools and 3 account/setup helper
 ### Labels
 - **List Todoist labels** (`list_labels`): Read-only lookup of personal labels with name resolution, limit, and cursor pagination.
 - **Create label** (`create_label`): Creates a new personal label with a name and optional color and favorite status (requires confirmation).
-- **Update label** (`update_label`): Renames a label or updates color, order, or favorite status (requires confirmation).
+- **Update label** (`update_label`): Renames a label or updates color or favorite status (requires confirmation).
 - **Delete label** (`delete_label`): Deletes a personal label and removes it from all associated tasks (requires confirmation).
 
 ### Productivity
@@ -57,8 +57,8 @@ All actions use confirmation cards with a Cancel/Action footer. The screenshots 
 | :---: | :---: | :---: |
 | ![Connect Todoist card](ui_images/connect.png) | ![Create task confirmation card](ui_images/creation.png) | ![Delete project confirmation card](ui_images/deletion.png) |
 
-- **State modifications**: Task, project, section, and label creation share an editable `Name` field followed by a details summary. Updates display the selected entity name and ID alongside requested changes; untouched fields remain unmodified.
-- **Destructive actions**: Deletions clearly display Name, ID, and an explicit warning explaining the consequences (e.g. deleting a project also deletes all containing sections and tasks).
+- **State modifications**: Task, project, section, and label creation share an editable `Name` field followed by a details summary. Updates display the selected item’s name and the requested changes. The label update card shows the original name and prefills the editable name, color, and favorite fields from the label and the requested changes.
+- **Destructive actions**: Deletion confirmations display the item’s name and a warning explaining the consequences (e.g. deleting a project also deletes all containing sections and tasks).
 - **Read-only lookups**: Return glance cards with structured data without prompting for confirmation.
 - **Label operations**: `list_labels` reads labels with optional `limit` and `cursor`. Modifying labels is handled cleanly by dedicated `create_label`, `update_label`, and `delete_label` tools.
 

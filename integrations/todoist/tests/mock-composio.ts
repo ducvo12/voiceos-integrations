@@ -125,7 +125,7 @@ const defaultData: Record<string, unknown> = {
   TODOIST_GET_ALL_PROJECTS: { results: [{ id: "project_1", name: "Home" }], next_cursor: null },
   TODOIST_LIST_SECTIONS: { results: [{ id: "section_1", name: "Errands" }], next_cursor: null },
   TODOIST_GET_PRODUCTIVITY_STATS: { karma: 225, completed_count: 21 },
-  TODOIST_LIST_LABELS: { results: [{ id: "label_1", name: "read" }], next_cursor: null },
+  TODOIST_LIST_LABELS: { results: [{ id: "label_1", name: "read", color: "red", is_favorite: false }], next_cursor: null },
   TODOIST_CREATE_LABEL_V1: { id: "label_new", name: "test_label" },
   TODOIST_UPDATE_LABEL_V1_SECOND: { id: "label_1", name: "renamed" },
   TODOIST_DELETE_LABEL_V1: {},

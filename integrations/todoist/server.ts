@@ -11,7 +11,7 @@ import { setTimeout as delay } from "node:timers/promises";
 
 // Composio owns OAuth, token storage/refresh, and Todoist requests.
 // This adapter only saves this installation's identity and connection reference.
-const server = new McpServer({ name: "composio-todoist", version: "1.0.15" });
+const server = new McpServer({ name: "composio-todoist", version: "1.0.16" });
 // BEGIN TOOL CATALOG
 const catalog: any = {
   "version": "20260731_00",
@@ -192,13 +192,14 @@ const catalog: any = {
       "name": "update_task",
       "title": "Update task",
       "slug": "TODOIST_UPDATE_TASK",
-      "description": "Update an existing Todoist task. Find the exact task with get_active_tasks first. Include only requested changes. For a specific due date without a time, use due_date in the format Nov 13, 2026. When changing labels, pass the current task labels separately for display if available. For a follow-up before approval, revise the pending update, preserve the selected task and other pending edits, and show the confirmation again.",
+      "description": "Update an existing Todoist task. Find the exact task with get_active_tasks first. For the editable New name field, pass the requested name or prefill it with the current task name. Include other fields only for requested changes. For a specific due date without a time, use due_date in the format Nov 13, 2026. When changing labels, pass the current task labels separately for display if available. For a follow-up before approval, revise the pending update, preserve the selected task and other pending edits, and show the confirmation again.",
       "readOnly": false,
       "inputSchema": {
         "type": "object",
         "title": "UpdateTaskRequest",
         "required": [
-          "task_id"
+          "task_id",
+          "target_name"
         ],
         "properties": {
           "labels": {
@@ -214,7 +215,7 @@ const catalog: any = {
             "examples": [
               "Buy groceries and snacks"
             ],
-            "description": "New content for the task."
+            "description": "Name shown in the editable New name field. Use the current task name unless the user requests a rename."
           },
           "task_id": {
             "type": "string",
@@ -242,22 +243,18 @@ const catalog: any = {
             "description": "Language code for parsing `due_string`, e.g., 'en'."
           },
           "duration": {
-            "type": "integer",
+            "anyOf": [{ "type": "integer", "minimum": 1 }, { "type": "string" }],
             "title": "Duration",
             "examples": [
               15,
               30,
               60
             ],
-            "description": "Positive integer for task duration amount (how long the task takes). Must be used together with duration_unit. This is separate from due date - use due_string/due_date/due_datetime for when the task is due.",
-            "exclusiveMinimum": 0,
-            "minimum": 1
+            "description": "Positive integer for task duration amount (how long the task takes). Must be used together with duration_unit. This is separate from due date - use due_string/due_date/due_datetime for when the task is due."
           },
           "priority": {
-            "type": "integer",
+            "anyOf": [{ "type": "integer", "minimum": 1, "maximum": 4 }, { "type": "string", "enum": ["1", "2", "3", "4"] }],
             "title": "Priority",
-            "maximum": 4,
-            "minimum": 1,
             "examples": [
               1,
               2,
@@ -326,6 +323,7 @@ const catalog: any = {
           },
           "target_name": {
             "type": "string",
+            "minLength": 1,
             "title": "Selected target",
             "description": "Human-readable name/title from the lookup, for confirmation display only. Never invent a name or substitute it for the required ID."
           }
@@ -343,7 +341,8 @@ const catalog: any = {
         "type": "object",
         "title": "CloseTaskV1Request",
         "required": [
-          "task_id"
+          "task_id",
+          "target_name"
         ],
         "properties": {
           "task_id": {
@@ -357,6 +356,7 @@ const catalog: any = {
           },
           "target_name": {
             "type": "string",
+            "minLength": 1,
             "title": "Selected target",
             "description": "Human-readable name/title from the lookup, for confirmation display only. Never invent a name or substitute it for the required ID."
           }
@@ -612,7 +612,8 @@ const catalog: any = {
         "type": "object",
         "title": "DeleteSection2Request",
         "required": [
-          "section_id"
+          "section_id",
+          "target_name"
         ],
         "properties": {
           "section_id": {
@@ -626,6 +627,7 @@ const catalog: any = {
           },
           "target_name": {
             "type": "string",
+            "minLength": 1,
             "title": "Selected target",
             "description": "Human-readable name/title from the lookup, for confirmation display only. Never invent a name or substitute it for the required ID."
           }
@@ -772,17 +774,26 @@ const catalog: any = {
       "title": "Update label",
       "readOnly": false,
       "slug": "TODOIST_UPDATE_LABEL_V1_SECOND",
-      "description": "Update a personal Todoist label. Use when asked to rename a label or change its color, order, or favorite status. Resolve the exact ID with list_labels first, clarify ambiguous names, and send only requested changes.",
+      "description": "Update a personal Todoist label. Look up the exact label with list_labels and clarify ambiguous names. Prefill name, color, and is_favorite from the matched label, applying any changes the user requested. Pass is_favorite as the string true or false for the dropdown. For follow-ups before approval, preserve the other values on the pending card.",
       "inputSchema": {
         "type": "object",
-        "required": ["label_id"],
+        "required": ["label_id", "target_name", "name", "color", "is_favorite"],
         "properties": {
           "label_id": { "type": "string", "description": "ID of the label to update." },
-          "target_name": { "type": "string", "description": "Existing label name from list_labels, for confirmation display only. Never substitute it for label_id." },
-          "name": { "type": "string", "minLength": 1, "maxLength": 128, "description": "New label name. Omit to leave unchanged." },
-          "color": { "anyOf": [{ "type": "string" }, { "type": "integer" }], "description": "New color name or numeric color code. Omit to leave unchanged." },
-          "order": { "type": "integer", "description": "New position in the label list. Omit to leave unchanged." },
-          "is_favorite": { "type": "boolean", "description": "New favorite status. Omit to leave unchanged." }
+          "target_name": { "type": "string", "minLength": 1, "description": "Existing label name from list_labels, for confirmation display only. Never substitute it for label_id." },
+          "name": { "type": "string", "minLength": 1, "maxLength": 128, "description": "Name to save. Use the current name unless the user requests a rename." },
+          "color": {
+            "type": "string",
+            "enum": [
+              "berry_red", "red", "orange", "yellow",
+              "olive_green", "lime_green", "green", "mint_green", "teal",
+              "sky_blue", "light_blue", "blue", "grape", "violet",
+              "lavender", "magenta", "salmon", "charcoal", "grey",
+              "taupe"
+            ],
+            "description": "Color to save. Use the current color from list_labels unless the user requests a different one."
+          },
+          "is_favorite": { "anyOf": [{ "type": "boolean" }, { "type": "string", "enum": ["true", "false"] }], "description": "Favorite status to save. Use the current status unless the user requests a change." }
         }
       }
     },
@@ -796,7 +807,8 @@ const catalog: any = {
         "type": "object",
         "title": "DeleteLabelV1Request",
         "required": [
-          "label_id"
+          "label_id",
+          "target_name"
         ],
         "properties": {
           "label_id": {
@@ -809,6 +821,7 @@ const catalog: any = {
           },
           "target_name": {
             "type": "string",
+            "minLength": 1,
             "title": "Selected label",
             "description": "Human-readable label name from list_labels, for confirmation display only. Never substitute it for label_id."
           }
@@ -1273,11 +1286,19 @@ function inputShape(schema: any): z.ZodRawShape {
 
 // VoiceOS sends edited top-level confirmation fields as text.
 function normalizeConfirmationEdits(name: string, args: Record<string, any>) {
-  if (name === "create_project" || name === "create_label") {
-    if (args.color === "") delete args.color;
-    if (typeof args.is_favorite === "string") args.is_favorite = args.is_favorite === "true";
+  if ((name === "create_project" || name === "create_label") && args.color === "") {
+    delete args.color;
   }
+  if (typeof args.is_favorite === "string") args.is_favorite = args.is_favorite === "true";
   if (name !== "update_task") return;
+  if (typeof args.priority === "string") args.priority = Number(args.priority);
+  if (typeof args.duration === "string") {
+    const duration = Number(args.duration);
+    if (!/^\d+$/.test(args.duration) || !Number.isSafeInteger(duration) || duration < 1) {
+      throw new Error("Enter a positive whole number for the duration.");
+    }
+    args.duration = duration;
+  }
   if (args.clear_description === true) {
     if (args.description !== undefined) throw new Error("Choose whether to replace or remove the description.");
     args.description = "";
@@ -1331,9 +1352,6 @@ function validateArguments(name: string, args: Record<string, any>) {
     if (name === "update_task" && !Object.keys(args).some(key => key !== "task_id")) {
       throw new Error("Choose at least one task field to update.");
     }
-  }
-  if (name === "update_label" && !Object.keys(args).some(key => key !== "label_id")) {
-    throw new Error("Choose at least one label field to update.");
   }
 }
 
@@ -1416,7 +1434,9 @@ for (const tool of catalog.tools) {
     annotations: { readOnlyHint: tool.readOnly, destructiveHint: ["delete_project", "delete_section", "delete_label"].includes(tool.name), openWorldHint: true },
   }, async (input: Record<string, any>, extra) => withFeedback(tool.title, extra, async () => {
       const { target_name, current_labels, ...args } = input;
+      if (target_name !== undefined && !target_name.trim()) throw new Error("target_name cannot be blank.");
       normalizeConfirmationEdits(tool.name, args);
+      if (tool.name === "update_task" && args.content === target_name) delete args.content;
       validateArguments(tool.name, args);
       if (tool.name === "update_task" && args.due_date !== undefined) {
         args.due_date = normalizeUpdateDueDate(args.due_date);
